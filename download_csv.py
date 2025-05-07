@@ -10,9 +10,9 @@ from time import sleep
 service = Service(GeckoDriverManager().install())
 driver = webdriver.Firefox(service=service)
 
+
 url = "https://sinca.mma.gob.cl/cgi-bin/APUB-MMA/apub.htmlindico2.cgi?page=pageRight&header=Arica&gsize=1495x708&period=specified&from=00010100&to=25050523&macro=./RXV/F01/Cal/PM25//PM25.diario.diario.ic&limgfrom=&limgto=&limdfrom=&limdto=&rsrc=&stnkey="
 driver.get(url)
-# Esperar a que la página cargue completamente
 
 # Ejecutando funcion Open para descargar archivo csv
 try:

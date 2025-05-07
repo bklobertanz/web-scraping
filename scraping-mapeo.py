@@ -5,7 +5,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.service import Service
 from webdriver_manager.firefox import GeckoDriverManager
 
-
 base_url = "https://sinca.mma.gob.cl/index.php/region/index/id/"
 regiones = [
     "XV",
