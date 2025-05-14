@@ -21,6 +21,7 @@ regiones = [
     "M",
     "VI",
     "VII",
+    "XVI",
     "VIII",
     "IX",
     "XIV",
@@ -44,6 +45,7 @@ urls = [
     f"{base_url}{regiones[12]}",
     f"{base_url}{regiones[13]}",
     f"{base_url}{regiones[14]}",
+    f"{base_url}{regiones[15]}",
 ]
 
 
