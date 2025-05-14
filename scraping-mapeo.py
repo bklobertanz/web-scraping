@@ -6,8 +6,26 @@ from selenium.webdriver.firefox.service import Service
 from webdriver_manager.firefox import GeckoDriverManager
 import re
 from time import sleep
+from pprint import pprint
+import sys  # Adding sys for exit() functionality
 
 base_url = "https://sinca.mma.gob.cl/index.php/region/index/id/"
+
+# Check if there are more contaminants
+
+mapaContaminanteCodigo = {
+    "PM10": "PM10",
+    "PM25": "PM25",
+    "NO2": "0003",
+    "SO2": "0001",
+    "O3": "0008",
+    "CO": "0004",
+    "NOX": "0NOX",
+    "NO": "0002",
+    "CH4": "0CH4",
+    "HCNM": "NMHC",
+    "HCT": "THCM",
+}
 
 periodosPromedio = {"diario": "diario", "trimestral": "trimestral", "anual": "anual"}
 
@@ -29,25 +47,24 @@ regiones = [
     "XI",
     "XII",
 ]
-urls = [
-    f"{base_url}{regiones[0]}",
-    f"{base_url}{regiones[1]}",
-    f"{base_url}{regiones[2]}",
-    f"{base_url}{regiones[3]}",
-    f"{base_url}{regiones[4]}",
-    f"{base_url}{regiones[5]}",
-    f"{base_url}{regiones[6]}",
-    f"{base_url}{regiones[7]}",
-    f"{base_url}{regiones[8]}",
-    f"{base_url}{regiones[9]}",
-    f"{base_url}{regiones[10]}",
-    f"{base_url}{regiones[11]}",
-    f"{base_url}{regiones[12]}",
-    f"{base_url}{regiones[13]}",
-    f"{base_url}{regiones[14]}",
-    f"{base_url}{regiones[15]}",
-]
-
+mapaRegionUrls = {
+    "RXV": f"{base_url}{regiones[0]}",
+    "RI": f"{base_url}{regiones[1]}",
+    "RII": f"{base_url}{regiones[2]}",
+    "RIII": f"{base_url}{regiones[3]}",
+    "RIV": f"{base_url}{regiones[4]}",
+    "RV": f"{base_url}{regiones[5]}",
+    "RM": f"{base_url}{regiones[6]}",
+    "RVI": f"{base_url}{regiones[7]}",
+    "RVII": f"{base_url}{regiones[8]}",
+    "RXVI": f"{base_url}{regiones[9]}",
+    "RVIII": f"{base_url}{regiones[10]}",
+    "RIX": f"{base_url}{regiones[11]}",
+    "RXIV": f"{base_url}{regiones[12]}",
+    "RX": f"{base_url}{regiones[13]}",
+    "RXI": f"{base_url}{regiones[14]}",
+    "RXII": f"{base_url}{regiones[15]}",
+}
 
 # Setup Firefox driver
 service = Service(GeckoDriverManager().install())
@@ -83,6 +100,7 @@ def getRegionStations(regionUrl):
         estaciones_keys = []
         estaciones_from_date = []
         estaciones_to_date = []
+        contaminants = {}
 
         # Wait for the table rows to be present
         nombresEstaciones = WebDriverWait(driver, 10).until(
@@ -108,7 +126,17 @@ def getRegionStations(regionUrl):
             if match:
                 region_code = match.group(1)
                 station_key = match.group(2)
-                estaciones_keys.append(station_key)
+                if station_key not in estaciones_keys:
+                    estaciones_keys.append(station_key)
+                if station_key not in contaminants:
+                    contaminants[station_key] = []
+
+                # Get contaminant code
+            contaminant_pattern = r"macro=([^\.]+)\."
+            contaminant_match = re.search(contaminant_pattern, link)
+            if contaminant_match:
+                contaminant_code = contaminant_match.group(1)
+                contaminants[station_key].append(contaminant_code)
 
             # Get station id
             id_pattern = r"/id/(\d+)"
@@ -119,7 +147,8 @@ def getRegionStations(regionUrl):
             else:
                 print("No match for station id pattern")  # Debug print
 
-            # Get from and to dates with updated patterns
+            # Get from and to dates:
+            # TO-DO: there are from and to dates for each contaminant
             from_pattern = (
                 r"\&from=(\d{6})\&"  # Updated to handle URL parameters correctly
             )
@@ -131,8 +160,10 @@ def getRegionStations(regionUrl):
             if from_match and to_match:
                 from_date = from_match.group(1)
                 to_date = to_match.group(1)
-                estaciones_from_date.append(from_date)
-                estaciones_to_date.append(to_date)
+                if from_date not in estaciones_from_date:
+                    estaciones_from_date.append(from_date)
+                if to_date not in estaciones_to_date:
+                    estaciones_to_date.append(to_date)
             else:
                 print("No match for date patterns")  # Debug print
 
@@ -143,6 +174,7 @@ def getRegionStations(regionUrl):
             "from_date": estaciones_from_date,
             "to_date": estaciones_to_date,
             "number": numberStations,
+            "contaminants": contaminants,
         }
 
     except Exception as e:
@@ -152,32 +184,61 @@ def getRegionStations(regionUrl):
 # for url in urls:
 #     getRegionStations(url)
 
-index = 0
-region_code = "RXV"
+region_code = "RVIII"
+index = 32
+try:
+    getRegionStations(mapaRegionUrls[region_code])
 
-getRegionStations(urls[index])
+    print("\nComplete stations_by_region structure:")
+    pprint(stations_by_region, width=80, indent=2)
+    sys.exit()
+    # Print basic station information
+    print("\nStation Information:")
+    print(f"Name: {stations_by_region[region_code]['names'][index]}")
+    print(f"Key: {stations_by_region[region_code]['keys'][index]}")
+    print(f"ID: {stations_by_region[region_code]['ids'][index]}")
+    print(f"From date: {stations_by_region[region_code]['from_date'][index]}")
+    print(f"To date: {stations_by_region[region_code]['to_date'][index]}")
+    print(f"Number of stations: {stations_by_region[region_code]['number']}")
 
-print(stations_by_region[region_code]["names"][index])
-print(stations_by_region[region_code]["keys"][index])
-print(stations_by_region[region_code]["ids"][index])
-print(stations_by_region[region_code]["from_date"][index])
-print(stations_by_region[region_code]["to_date"][index])
-print(stations_by_region[region_code]["number"])
+    # Get and print contaminants for the current station
+    station_key = stations_by_region[region_code]["keys"][index]
+    print(f"Contaminants for station {station_key}:")
+    if station_key in stations_by_region[region_code]["contaminants"]:
+        print(stations_by_region[region_code]["contaminants"][station_key])
+    else:
+        print("No contaminants found for this station")
+except Exception as e:
+    print(f"An error occurred: {e}")
+finally:
+    driver.quit()
 
-## Ejemplo para un parámetro contaminante: build graphs url
-param = "PM25"
-url = (
-    f"https://sinca.mma.gob.cl/cgi-bin/APUB-MMA/apub.htmlindico2.cgi"
-    f"?page=pageRight"
-    f'&header={stations_by_region[region_code]["names"][index]}'
-    f"&gsize=1495x708"
-    f"&period=specified"
-    f"&from={stations_by_region[region_code]['from_date'][index]}"
-    f"&to={stations_by_region[region_code]['to_date'][index]}"
-    f'&macro=./{region_code}/{stations_by_region[region_code]["keys"][index]}/Cal/{param}//{param}.diario.{periodosPromedio["anual"]}.ic'
-    f"&limgfrom=&limgto=&limdfrom=&limdto=&rsrc=&stnkey="
-)
-print(f"Navegando a: {url}")
-driver.get(url)
-sleep(10)
-driver.quit()
+
+def testRegionStations():
+    index = 0
+    region_code = "RXV"
+    getRegionStations(mapaRegionUrls[region_code])
+
+    print(stations_by_region[region_code]["names"][index])
+    print(stations_by_region[region_code]["keys"][index])
+    print(stations_by_region[region_code]["ids"][index])
+    print(stations_by_region[region_code]["from_date"][index])
+    print(stations_by_region[region_code]["to_date"][index])
+    print(stations_by_region[region_code]["number"])
+
+    ## Ejemplo para un parámetro contaminante: build graphs url
+    param = "PM25"
+    url = (
+        f"https://sinca.mma.gob.cl/cgi-bin/APUB-MMA/apub.htmlindico2.cgi"
+        f"?page=pageRight"
+        f'&header={stations_by_region[region_code]["names"][index]}'
+        f"&gsize=1495x708"
+        f"&period=specified"
+        f"&from={stations_by_region[region_code]['from_date'][index]}"
+        f"&to={stations_by_region[region_code]['to_date'][index]}"
+        f'&macro=./{region_code}/{stations_by_region[region_code]["keys"][index]}/Cal/{param}//{param}.diario.{periodosPromedio["anual"]}.ic'
+        f"&limgfrom=&limgto=&limdfrom=&limdto=&rsrc=&stnkey="
+    )
+    print(f"Navegando a: {url}")
+    driver.get(url)
+    sleep(10)
