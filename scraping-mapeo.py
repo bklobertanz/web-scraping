@@ -8,6 +8,7 @@ import re
 from time import sleep
 from pprint import pprint
 import sys
+import json
 from urllib.parse import quote  # Adding URL encoding functionality
 
 base_url = "https://sinca.mma.gob.cl/index.php/region/index/id/"
@@ -148,10 +149,12 @@ def getRegionStations(regionUrl):
                 print("No match for station id pattern")
 
         if current_region_code:
+            # Add numberStations directly to the dictionary
+            stations_by_region["numberStations"] = numberStations
 
-            stations_by_region[current_region_code] = {"numberStations": numberStations}
+            # Add stations directly under the region
             for i, station_key in enumerate(estaciones_keys):
-                stations_by_region[current_region_code][estaciones_list[i]] = {
+                stations_by_region[estaciones_list[i]] = {
                     "name": estaciones_list[i],
                     "key": station_key,
                     "id": estaciones_ids[i],
@@ -192,7 +195,12 @@ for region_code, region_url in mapaRegionUrls.items():
     stations[region_code] = getRegionStations(region_url)
 
 try:
-    pprint(stations)
+    path = "./stations"
+    # Save to JSON
+    with open(f"{path}/stations_data.json", "w", encoding="utf-8") as f:
+        json.dump(stations, f, ensure_ascii=False, indent=4)
+    print("Data successfully saved to stations_data.json")
+
 
 except Exception as e:
     print(f"An error occurred: {e}")
