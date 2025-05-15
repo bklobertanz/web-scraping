@@ -149,12 +149,13 @@ def getRegionStations(regionUrl):
                 print("No match for station id pattern")
 
         if current_region_code:
-            # Add numberStations directly to the dictionary
+            # Add numberStations to the dictionary
             stations_by_region["numberStations"] = numberStations
+            stations_by_region["stations"] = {}
 
-            # Add stations directly under the region
+            # Add stations under the stations field
             for i, station_key in enumerate(estaciones_keys):
-                stations_by_region[estaciones_list[i]] = {
+                stations_by_region["stations"][estaciones_list[i]] = {
                     "name": estaciones_list[i],
                     "key": station_key,
                     "id": estaciones_ids[i],
