@@ -70,6 +70,7 @@ mapaRegionUrls = {
 service = Service(GeckoDriverManager().install())
 driver = webdriver.Firefox(service=service)
 stations_by_region = {}
+contaminants = {}
 
 
 def getRegionStations(regionUrl):
@@ -100,7 +101,6 @@ def getRegionStations(regionUrl):
         estaciones_keys = []
         estaciones_from_date = []
         estaciones_to_date = []
-        contaminants = {}
 
         # Wait for the table rows to be present
         nombresEstaciones = WebDriverWait(driver, 10).until(
@@ -147,32 +147,30 @@ def getRegionStations(regionUrl):
             else:
                 print("No match for station id pattern")  # Debug print
 
-            # Get from and to dates:
             # TO-DO: there are from and to dates for each contaminant
-            from_pattern = (
-                r"\&from=(\d{6})\&"  # Updated to handle URL parameters correctly
-            )
-            to_pattern = r"\&to=(\d{6})\&"  # Updated to handle URL parameters correctly
+            # Get from and to dates:
+            # from_pattern = (
+            #     r"\&from=(\d{6})\&"  # Updated to handle URL parameters correctly
+            # )
+            # to_pattern = r"\&to=(\d{6})\&"  # Updated to handle URL parameters correctly
 
-            from_match = re.search(from_pattern, link)
-            to_match = re.search(to_pattern, link)
+            # from_match = re.search(from_pattern, link)
+            # to_match = re.search(to_pattern, link)
 
-            if from_match and to_match:
-                from_date = from_match.group(1)
-                to_date = to_match.group(1)
-                if from_date not in estaciones_from_date:
-                    estaciones_from_date.append(from_date)
-                if to_date not in estaciones_to_date:
-                    estaciones_to_date.append(to_date)
-            else:
-                print("No match for date patterns")  # Debug print
+            # if from_match and to_match:
+            #     from_date = from_match.group(1)
+            #     to_date = to_match.group(1)
+            #     if from_date not in estaciones_from_date:
+            #         estaciones_from_date.append(from_date)
+            #     if to_date not in estaciones_to_date:
+            #         estaciones_to_date.append(to_date)
+            # else:
+            #     print("No match for date patterns")  # Debug print
 
         stations_by_region[region_code] = {
             "names": estaciones_list,
             "keys": estaciones_keys,
             "ids": estaciones_ids,
-            "from_date": estaciones_from_date,
-            "to_date": estaciones_to_date,
             "number": numberStations,
             "contaminants": contaminants,
         }
@@ -185,21 +183,18 @@ def getRegionStations(regionUrl):
 #     getRegionStations(url)
 
 region_code = "RVIII"
+key = "830"
 index = 32
 try:
     getRegionStations(mapaRegionUrls[region_code])
 
-    print("\nComplete stations_by_region structure:")
-    pprint(stations_by_region, width=80, indent=2)
-    sys.exit()
     # Print basic station information
     print("\nStation Information:")
     print(f"Name: {stations_by_region[region_code]['names'][index]}")
     print(f"Key: {stations_by_region[region_code]['keys'][index]}")
     print(f"ID: {stations_by_region[region_code]['ids'][index]}")
-    print(f"From date: {stations_by_region[region_code]['from_date'][index]}")
-    print(f"To date: {stations_by_region[region_code]['to_date'][index]}")
     print(f"Number of stations: {stations_by_region[region_code]['number']}")
+    print(f"Contaminants: {contaminants[key]}")
 
     # Get and print contaminants for the current station
     station_key = stations_by_region[region_code]["keys"][index]
@@ -214,18 +209,7 @@ finally:
     driver.quit()
 
 
-def testRegionStations():
-    index = 0
-    region_code = "RXV"
-    getRegionStations(mapaRegionUrls[region_code])
-
-    print(stations_by_region[region_code]["names"][index])
-    print(stations_by_region[region_code]["keys"][index])
-    print(stations_by_region[region_code]["ids"][index])
-    print(stations_by_region[region_code]["from_date"][index])
-    print(stations_by_region[region_code]["to_date"][index])
-    print(stations_by_region[region_code]["number"])
-
+def testBuildUrls():
     ## Ejemplo para un parámetro contaminante: build graphs url
     param = "PM25"
     url = (
