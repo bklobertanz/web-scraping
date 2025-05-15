@@ -7,7 +7,8 @@ from webdriver_manager.firefox import GeckoDriverManager
 import re
 from time import sleep
 from pprint import pprint
-import sys  # Adding sys for exit() functionality
+import sys
+from urllib.parse import quote  # Adding URL encoding functionality
 
 base_url = "https://sinca.mma.gob.cl/index.php/region/index/id/"
 
@@ -171,6 +172,28 @@ def getRegionStations(regionUrl):
                 "number": numberStations,
                 "contaminants": contaminants,
             }
+            # Create graph URL for each contaminant
+            for i, station_key in enumerate(estaciones_keys):
+                if station_key in contaminants:
+                    for contaminant_code, dates in contaminants[station_key].items():
+                        from_date = dates["from_date"]
+                        to_date = dates["to_date"]
+                        # URL encode the station name
+                        encoded_station_name = quote(estaciones_list[i])
+                        contaminant_graph_url = (
+                            f"https://sinca.mma.gob.cl/cgi-bin/APUB-MMA/apub.htmlindico2.cgi"
+                            f"?page=pageRight"
+                            f"&header={encoded_station_name}"
+                            f"&gsize=1495x708"
+                            f"&period=specified"
+                            f"&from={from_date}"
+                            f"&to={to_date}"
+                            f'&macro=./{current_region_code}/{station_key}/Cal/{contaminant_code}//{contaminant_code}.diario.{periodosPromedio["anual"]}.ic'
+                            f"&limgfrom=&limgto=&limdfrom=&limdto=&rsrc=&stnkey="
+                        )
+                        contaminants[station_key][contaminant_code][
+                            "graph_url"
+                        ] = contaminant_graph_url
         else:
             print("No region code found in the analyzed links")
 
@@ -208,22 +231,3 @@ except Exception as e:
     print(f"An error occurred: {e}")
 finally:
     driver.quit()
-
-
-def testBuildUrls():
-    ## Ejemplo para un parámetro contaminante: build graphs url
-    param = "PM25"
-    url = (
-        f"https://sinca.mma.gob.cl/cgi-bin/APUB-MMA/apub.htmlindico2.cgi"
-        f"?page=pageRight"
-        f'&header={stations_by_region[region_code]["names"][index]}'
-        f"&gsize=1495x708"
-        f"&period=specified"
-        f"&from={stations_by_region[region_code]['from_date'][index]}"
-        f"&to={stations_by_region[region_code]['to_date'][index]}"
-        f'&macro=./{region_code}/{stations_by_region[region_code]["keys"][index]}/Cal/{param}//{param}.diario.{periodosPromedio["anual"]}.ic'
-        f"&limgfrom=&limgto=&limdfrom=&limdto=&rsrc=&stnkey="
-    )
-    print(f"Navegando a: {url}")
-    driver.get(url)
-    sleep(10)
