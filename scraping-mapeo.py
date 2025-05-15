@@ -193,7 +193,6 @@ for region_code, region_url in mapaRegionUrls.items():
 
 try:
     pprint(stations)
-    sys.exit()
 
 except Exception as e:
     print(f"An error occurred: {e}")
