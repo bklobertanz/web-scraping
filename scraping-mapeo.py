@@ -187,14 +187,12 @@ def getRegionStations(regionUrl):
         raise
 
 
-# for url in urls:
-#     getRegionStations(url)
+stations = {}
+for region_code, region_url in mapaRegionUrls.items():
+    stations[region_code] = getRegionStations(region_url)
 
 try:
-    region_code = "RVIII"
-    station_name = "Club de Empleados"
-    stations_by_region = getRegionStations(mapaRegionUrls[region_code])
-    pprint(stations_by_region[region_code][station_name])
+    pprint(stations)
     sys.exit()
 
 except Exception as e:
