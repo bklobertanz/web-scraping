@@ -4,14 +4,29 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.firefox.options import Options
 from webdriver_manager.firefox import GeckoDriverManager
 from time import sleep
 import json
 import os
 
-# Setup Firefox driver
+# Create downloads directory if it doesn't exist
+download_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "downloads")
+os.makedirs(download_dir, exist_ok=True)
+
+# Setup Firefox options
+options = Options()
+options.set_preference("browser.download.folderList", 2)  # Custom location
+options.set_preference("browser.download.dir", download_dir)
+options.set_preference("browser.download.useDownloadDir", True)
+options.set_preference(
+    "browser.helperApps.neverAsk.saveToDisk",
+    "text/csv,application/csv,application/vnd.ms-excel",
+)
+
+# Setup Firefox driver with options
 service = Service(GeckoDriverManager().install())
-driver = webdriver.Firefox(service=service)
+driver = webdriver.Firefox(service=service, options=options)
 
 
 def download_csv(driver, url):
@@ -52,7 +67,7 @@ except Exception as e:
 try:
     # download csv files from XV region
     # get stations then get all contaminants for each station
-    xv_stations = stations_data.get("RXV").get("stations")
+    xv_stations = stations_data.get("RI").get("stations")
     for station in xv_stations.values():
         # download csv for each contaminant
         for contaminant in station.get("contaminants").values():
