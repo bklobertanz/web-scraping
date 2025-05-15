@@ -1,53 +1,90 @@
-# TO-DO
+# Air Quality Data Scraper for SINCA (Sistema de Información Nacional de Calidad del Aire)
 
-# Obtener las fechas limites (x)
+This project contains scripts to collect and download air quality data from the Chilean National Air Quality Information System (SINCA).
 
-# obtener los contaminantes de la estacion(haciendo)
+## Scripts Description
 
-# obtener los parametros meteorologicos de la estacion(...)
+### scraping-mapeo.py
 
-# definir los links de los contaminantes de la estación(funciona para uno estático)
+This script maps and collects metadata about air quality monitoring stations across different regions in Chile. It:
 
-# definir los links de los metereologicos de la estación (...)
+- Scrapes data from all regions (XV to XII, including Metropolitan Region)
+- Collects information about each station including:
+  - Station name
+  - Station ID
+  - Station key
+  - Available contaminants
+  - Time ranges for measurements
+- Generates URLs for accessing the data graphs
+- Saves all collected information in `stations/stations_data.json`
 
-# obtener el link de la ficha de cada estación. (x)
+### download_csv.py
 
-# entregarlo en un csv (...)
+This script downloads the actual measurement data in CSV format. It:
 
-# crear y mantener una API? (proyecto personal)
+- Uses the station information collected by scraping-mapeo.py
+- Downloads CSV files for each station and contaminant
+- Saves all files in the `downloads/` directory
 
-# Entender como cambiar los parámetros de la URL para poder generar el gráfico que se necesita (x)
+## Supported Contaminants
 
-# https://sinca.mma.gob.cl/cgi-bin/APUB-MMA/apub.htmlindico2.cgi?page=pageRight&header={nombreEstacion}&gsize=1495x708&period=specified&from={inicioPeriodo}&to={terminoPeriodo}&macro=./R{codigoReg}/{keyEstacion}/Cal/{parametroCont}//{parametroCont}.diario.{promedioPeriodo}.ic&limgfrom=&limgto=&limdfrom=&limdto=&rsrc=&stnkey="
+The system tracks the following contaminants:
 
-# Parámetros
+- PM10 (Particulate Matter ≤10μm)
+- PM2.5 (Particulate Matter ≤2.5μm)
+- NO2 (Nitrogen Dioxide)
+- SO2 (Sulfur Dioxide)
+- O3 (Ozone)
+- CO (Carbon Monoxide)
+- NOX (Nitrogen Oxides)
+- NO (Nitric Oxide)
+- CH4 (Methane)
+- HCNM (Non-Methane Hydrocarbons)
+- HCT (Total Hydrocarbons)
 
-# Por cada parámetro contaminante se tiene un promedio diario (diario, trimestral o anual). Por cada unidad de promedio se obtiene un gráfico de serie de tiempo.
+## Data Averaging Periods
 
-# A este promedio se le debe asignar una ventana de tiempo (suelo y techo)
+The data can be retrieved in different averaging periods:
 
-# Promedios
+- Daily averages
+- Quarterly averages
+- Annual averages
 
-# diario.diario
+## Usage
 
-# diario.trimestral
+1. Install the required dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+2. First run the mapping script to collect station information:
+   ```
+   python scraping-mapeo.py
+   ```
+3. Then download the data using:
+   ```
+   python download_csv.py
+   ```
 
-# diario.anual
+## Requirements
 
-# Una estación tiene:
+- Python 3.x
+- Selenium WebDriver
+- Firefox Browser
+- Required Python packages are listed in requirements.txt
 
-# https://sinca.mma.gob.cl/index.php/estacion/index/key/F01
+Note: The script uses Firefox WebDriver. Make sure Firefox is installed on your system.
 
-# https://sinca.mma.gob.cl/index.php/estacion/index/id/232
+## TODO
 
-# - un nombre
+Future improvements and features planned for this project:
 
-# - un id
+### Data Collection
 
-# - una key
+- [ ] Add support for meteorological parameters collection
+- [ ] Add support for custom naming when downloading files
+- [ ] Add support for dynamically changing averaging periods
 
-# - un código de región
+### Performance Improvements
 
-# un conjunto de parámetros contaminantes y metereológicos.
-
-# Por cada parámetro existen mediciones, que pueden ser entregadas en promedio diario (anual, trimestral). Se debe definir un periodo para poder calcular este promedio (gráficos de series de tiempo).
+- [ ] Implement parallel downloading to improve performance
+- [ ] Optimize JSON file read/write operations
