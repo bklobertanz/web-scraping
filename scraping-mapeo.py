@@ -48,22 +48,22 @@ regiones = [
     "XII",
 ]
 mapaRegionUrls = {
-    "RXV": f"{base_url}{regiones[0]}",
-    "RI": f"{base_url}{regiones[1]}",
-    "RII": f"{base_url}{regiones[2]}",
-    "RIII": f"{base_url}{regiones[3]}",
-    "RIV": f"{base_url}{regiones[4]}",
-    "RV": f"{base_url}{regiones[5]}",
-    "RM": f"{base_url}{regiones[6]}",
-    "RVI": f"{base_url}{regiones[7]}",
-    "RVII": f"{base_url}{regiones[8]}",
-    "RXVI": f"{base_url}{regiones[9]}",
-    "RVIII": f"{base_url}{regiones[10]}",
-    "RIX": f"{base_url}{regiones[11]}",
-    "RXIV": f"{base_url}{regiones[12]}",
-    "RX": f"{base_url}{regiones[13]}",
-    "RXI": f"{base_url}{regiones[14]}",
-    "RXII": f"{base_url}{regiones[15]}",
+    f"R{regiones[0]}": f"{base_url}{regiones[0]}",
+    f"R{regiones[1]}": f"{base_url}{regiones[1]}",
+    f"R{regiones[2]}": f"{base_url}{regiones[2]}",
+    f"R{regiones[3]}": f"{base_url}{regiones[3]}",
+    f"R{regiones[4]}": f"{base_url}{regiones[4]}",
+    f"R{regiones[5]}": f"{base_url}{regiones[5]}",
+    f"R{regiones[6]}": f"{base_url}{regiones[6]}",
+    f"R{regiones[7]}": f"{base_url}{regiones[7]}",
+    f"R{regiones[8]}": f"{base_url}{regiones[8]}",
+    f"R{regiones[9]}": f"{base_url}{regiones[9]}",
+    f"R{regiones[10]}": f"{base_url}{regiones[10]}",
+    f"R{regiones[11]}": f"{base_url}{regiones[11]}",
+    f"R{regiones[12]}": f"{base_url}{regiones[12]}",
+    f"R{regiones[13]}": f"{base_url}{regiones[13]}",
+    f"R{regiones[14]}": f"{base_url}{regiones[14]}",
+    f"R{regiones[15]}": f"{base_url}{regiones[15]}",
 }
 
 # Setup Firefox driver
@@ -74,6 +74,9 @@ contaminants = {}
 
 
 def getRegionStations(regionUrl):
+    if not regionUrl:
+        print("Invalid region URL")
+        return
 
     try:
         # Navigate to the page
@@ -95,12 +98,11 @@ def getRegionStations(regionUrl):
         print(f"An error occurred: {e}")
 
     try:
-        # Create an empty list to store station names
+        # Create empty lists to store station data
         estaciones_list = []
         estaciones_ids = []
         estaciones_keys = []
-        estaciones_from_date = []
-        estaciones_to_date = []
+        current_region_code = None
 
         # Wait for the table rows to be present
         nombresEstaciones = WebDriverWait(driver, 10).until(
@@ -118,25 +120,39 @@ def getRegionStations(regionUrl):
 
         for links in linksGraficos:
             link = links.get_attribute("href")
-            print(f"\nAnalyzing link: {link}")  # Debug print
+            print(f"\nAnalyzing link: {link}")
 
             # Get station key with updated pattern
             station_pattern = r"/([IVXRM]+)/([^/]+)/Cal/"
             match = re.search(station_pattern, link)
             if match:
-                region_code = match.group(1)
+                current_region_code = match.group(1)
                 station_key = match.group(2)
                 if station_key not in estaciones_keys:
                     estaciones_keys.append(station_key)
                 if station_key not in contaminants:
-                    contaminants[station_key] = []
+                    contaminants[station_key] = {}
 
-                # Get contaminant code
+            # Get contaminant code and dates
             contaminant_pattern = r"macro=([^\.]+)\."
+            from_pattern = r"\&from=(\d{6})\&"
+            to_pattern = r"\&to=(\d{6})\&"
+
             contaminant_match = re.search(contaminant_pattern, link)
-            if contaminant_match:
+            from_match = re.search(from_pattern, link)
+            to_match = re.search(to_pattern, link)
+
+            if contaminant_match and station_key:
                 contaminant_code = contaminant_match.group(1)
-                contaminants[station_key].append(contaminant_code)
+                from_date = from_match.group(1) if from_match else None
+                to_date = to_match.group(1) if to_match else None
+
+                # Create nested structure for contaminant data
+                if contaminant_code not in contaminants[station_key]:
+                    contaminants[station_key][contaminant_code] = {
+                        "from_date": from_date,
+                        "to_date": to_date,
+                    }
 
             # Get station id
             id_pattern = r"/id/(\d+)"
@@ -145,38 +161,22 @@ def getRegionStations(regionUrl):
                 station_id = id_match.group(1)
                 estaciones_ids.append(station_id)
             else:
-                print("No match for station id pattern")  # Debug print
+                print("No match for station id pattern")
 
-            # TO-DO: there are from and to dates for each contaminant
-            # Get from and to dates:
-            # from_pattern = (
-            #     r"\&from=(\d{6})\&"  # Updated to handle URL parameters correctly
-            # )
-            # to_pattern = r"\&to=(\d{6})\&"  # Updated to handle URL parameters correctly
-
-            # from_match = re.search(from_pattern, link)
-            # to_match = re.search(to_pattern, link)
-
-            # if from_match and to_match:
-            #     from_date = from_match.group(1)
-            #     to_date = to_match.group(1)
-            #     if from_date not in estaciones_from_date:
-            #         estaciones_from_date.append(from_date)
-            #     if to_date not in estaciones_to_date:
-            #         estaciones_to_date.append(to_date)
-            # else:
-            #     print("No match for date patterns")  # Debug print
-
-        stations_by_region[region_code] = {
-            "names": estaciones_list,
-            "keys": estaciones_keys,
-            "ids": estaciones_ids,
-            "number": numberStations,
-            "contaminants": contaminants,
-        }
+        if current_region_code:
+            stations_by_region[current_region_code] = {
+                "names": estaciones_list,
+                "keys": estaciones_keys,
+                "ids": estaciones_ids,
+                "number": numberStations,
+                "contaminants": contaminants,
+            }
+        else:
+            print("No region code found in the analyzed links")
 
     except Exception as e:
         print(f"An error occurred: {e}")
+        raise
 
 
 # for url in urls:
@@ -187,7 +187,8 @@ key = "830"
 index = 32
 try:
     getRegionStations(mapaRegionUrls[region_code])
-
+    pprint(stations_by_region[region_code])
+    sys.exit()
     # Print basic station information
     print("\nStation Information:")
     print(f"Name: {stations_by_region[region_code]['names'][index]}")
