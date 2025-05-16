@@ -9,10 +9,20 @@ from webdriver_manager.firefox import GeckoDriverManager
 from time import sleep
 import json
 import os
+import glob
 
 # Create downloads directory if it doesn't exist
 download_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "downloads")
 os.makedirs(download_dir, exist_ok=True)
+
+
+def get_latest_downloaded_file():
+    """Get the most recently downloaded file in the download directory"""
+    files = glob.glob(os.path.join(download_dir, "*"))
+    if not files:
+        return None
+    return max(files, key=os.path.getctime)
+
 
 # Setup Firefox options
 options = Options()
@@ -30,11 +40,29 @@ driver = webdriver.Firefox(service=service, options=options)
 
 
 def download_csv(driver, url):
+    # Get list of files before download
+    files_before = set(glob.glob(os.path.join(download_dir, "*")))
+
+    # Perform the download
     driver.get(url)
-    sleep(5)  # Esperar 5 segundos para que la página cargue completamente
+    sleep(5)  # Wait for page to load completely
     csvFileSel = "body > table > tbody > tr > td > table:nth-child(3) > tbody > tr:nth-child(1) > td > label > span.icon-file-excel > a"
     driver.find_element(By.CSS_SELECTOR, csvFileSel).click()
-    sleep(10)  # Esperar 10 segundos para que el archivo se descargue
+
+    # Wait for new file to appear and return its path
+    max_wait = 30  # Maximum seconds to wait for download
+    while max_wait > 0:
+        sleep(1)
+        files_after = set(glob.glob(os.path.join(download_dir, "*")))
+        new_files = files_after - files_before
+        if new_files:
+            new_file_path = new_files.pop()  # Get the path of the new file
+            print(f"Downloaded file: {new_file_path}")
+            return new_file_path
+        max_wait -= 1
+
+    print("No new file detected after download attempt")
+    return None
 
 
 try:
@@ -71,7 +99,11 @@ try:
     for station in xv_stations.values():
         # download csv for each contaminant
         for contaminant in station.get("contaminants").values():
-            download_csv(driver, contaminant.get("graph_url"))
+            file_path = download_csv(driver, contaminant.get("graph_url"))
+            if file_path:
+                filename = os.path.basename(file_path)
+                print(f"File name: {filename}")
+                print(f"Full path: {file_path}")
 
 except FileNotFoundError as e:
     print(f"Error: {e}")
