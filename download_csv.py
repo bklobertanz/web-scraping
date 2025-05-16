@@ -12,6 +12,23 @@ import os
 import glob
 import re
 
+mapaContaminanteCodigo = {
+    "PM10": "PM10",
+    "PM25": "PM25",
+    "0003": "NO2",
+    "PM1D": "PM10-Discreto",
+    "PM2D": "PM25-Discreto",
+    "0001": "SO2",
+    "0008": "O3",
+    "0004": "CO",
+    "0NOX": "NOX",
+    "0002": "NO",
+    "0CH4": "CH4",
+    "NMHC": "HCNM",
+    "THCM": "HCT",
+}
+
+periodosPromedio = {"diario": "diario", "trimestral": "trimestral", "anual": "anual"}
 # Create downloads directory if it doesn't exist
 download_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "downloads")
 os.makedirs(download_dir, exist_ok=True)
@@ -27,7 +44,9 @@ def clean_filename(text):
     return text.strip("_")
 
 
-def download_csv(driver, url, region_code, station_name, contaminant_data):
+def download_csv(
+    driver, url, region_code, station_name, contaminant_code, contaminant_data, period
+):
     """Download CSV file and rename it with station and contaminant information"""
     # Get list of files before download
     files_before = set(glob.glob(os.path.join(download_dir, "*")))
@@ -53,7 +72,8 @@ def download_csv(driver, url, region_code, station_name, contaminant_data):
 
             # Create new filename with all components
             clean_station = clean_filename(station_name)
-            new_filename = f"{region_code}_{clean_station}_{contaminant_name}_{from_date}_{to_date}.csv"
+            contaminant_name = mapaContaminanteCodigo.get(contaminant_code)
+            new_filename = f"{region_code}_{clean_station}_{contaminant_name}_{from_date}_{to_date}_{period}.csv"
             new_file_path = os.path.join(download_dir, new_filename)
 
             # Rename the file
@@ -82,6 +102,15 @@ options.set_preference("browser.download.folderList", 2)  # Custom location
 options.set_preference("browser.download.dir", download_dir)
 options.set_preference("browser.download.useDownloadDir", True)
 options.set_preference(
+    "browser.download.manager.showWhenStarting", False
+)  # Hide download manager
+options.set_preference(
+    "browser.download.manager.focusWhenStarting", False
+)  # Don't focus download manager
+options.set_preference(
+    "browser.download.manager.closeWhenDone", True
+)  # Close download manager when done
+options.set_preference(
     "browser.helperApps.neverAsk.saveToDisk",
     "text/csv,application/csv,application/vnd.ms-excel",
 )
@@ -95,7 +124,7 @@ try:
     json_path = "./stations/stations_data.json"
     if not os.path.exists(json_path):
         raise FileNotFoundError(
-            f"The file {json_path} does not exist. Please run scraping-mapeo.py first."
+            f"The file {json_path} does not exist. Please get all stations data first."
         )
 
     # read json file
@@ -109,21 +138,25 @@ try:
             raise
 
     # Download CSV files for each region, station, and contaminant
+    # Manually set the period to "anual" for all downloads
+    period = periodosPromedio["anual"]
+
     for region_code, region_data in stations_data.items():
         if not isinstance(region_data, dict) or "stations" not in region_data:
             continue
 
         for station_name, station_data in region_data["stations"].items():
-            for contaminant_name, contaminant_data in station_data.get(
+            for contaminant_code, contaminant_data in station_data.get(
                 "contaminants", {}
             ).items():
-                print(f"{contaminant_name}")
                 file_path = download_csv(
                     driver,
                     contaminant_data.get("graph_url"),
                     region_code,
                     station_name,
+                    contaminant_code,
                     contaminant_data,
+                    period,
                 )
 
 except FileNotFoundError as e:
