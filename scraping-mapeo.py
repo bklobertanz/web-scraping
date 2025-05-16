@@ -1,3 +1,4 @@
+import os
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -196,7 +197,9 @@ for region_code, region_url in mapaRegionUrls.items():
     stations[region_code] = getRegionStations(region_url)
 
 try:
+
     path = "./stations"
+    os.makedirs(path, exist_ok=True)
     # Save to JSON
     with open(f"{path}/stations_data.json", "w", encoding="utf-8") as f:
         json.dump(stations, f, ensure_ascii=False, indent=4)
