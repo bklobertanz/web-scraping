@@ -14,21 +14,21 @@ from urllib.parse import quote  # Adding URL encoding functionality
 
 base_url = "https://sinca.mma.gob.cl/index.php/region/index/id/"
 
-# Check if there are more contaminants
 
-mapaContaminanteCodigo = {
-    "PM10": "PM10",
-    "PM25": "PM25",
-    "NO2": "0003",
-    "SO2": "0001",
-    "O3": "0008",
-    "CO": "0004",
-    "NOX": "0NOX",
-    "NO": "0002",
-    "CH4": "0CH4",
-    "HCNM": "NMHC",
-    "HCT": "THCM",
-}
+def getMacroURL(current_region_code, station_key, contaminant_code, periodosPromedio):
+    contaminantCodeUrlMap = {
+        "discreto": f'&macro=./{current_region_code}/{station_key}/Cal/{contaminant_code}//{contaminant_code}.discreto.{periodosPromedio["anual"]}.ic',
+        "default": f'&macro=./{current_region_code}/{station_key}/Cal/{contaminant_code}//{contaminant_code}.diario.{periodosPromedio["anual"]}.ic',
+    }
+
+    if contaminant_code == "PM1D" or contaminant_code == "PM2D":
+        url = contaminantCodeUrlMap["discreto"]
+    else:
+        url = contaminantCodeUrlMap["default"]
+    return url
+
+
+# Check if there are more contaminants
 
 periodosPromedio = {"diario": "diario", "trimestral": "trimestral", "anual": "anual"}
 
@@ -169,6 +169,12 @@ def getRegionStations(regionUrl):
                         to_date = dates["to_date"]
                         # URL encode the station name
                         encoded_station_name = quote(estaciones_list[i])
+                        macroURL = getMacroURL(
+                            current_region_code,
+                            station_key,
+                            contaminant_code,
+                            periodosPromedio,
+                        )
                         contaminant_graph_url = (
                             f"https://sinca.mma.gob.cl/cgi-bin/APUB-MMA/apub.htmlindico2.cgi"
                             f"?page=pageRight"
@@ -177,7 +183,7 @@ def getRegionStations(regionUrl):
                             f"&period=specified"
                             f"&from={from_date}"
                             f"&to={to_date}"
-                            f'&macro=./{current_region_code}/{station_key}/Cal/{contaminant_code}//{contaminant_code}.diario.{periodosPromedio["anual"]}.ic'
+                            f"{macroURL}"
                             f"&limgfrom=&limgto=&limdfrom=&limdto=&rsrc=&stnkey="
                         )
                         contaminants[station_key][contaminant_code][
