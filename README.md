@@ -83,6 +83,7 @@ Future improvements and features planned for this project:
 - [ ] Add support for meteorological parameters collection
 - [ ] Add support for custom naming when downloading files
 - [ ] Add support for dynamically changing averaging periods
+- [ ] Check problems with contaminant link that includes CONAMA: PM2D, PM1D, NMHC, 0CH4, 0NOX, 0003 - PM1D builds the url differently from other contaminants: ./RII/225/Cal/PM1D&macro=PM1D.discreto.diario
 
 ### Performance Improvements
 
