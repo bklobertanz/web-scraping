@@ -89,5 +89,8 @@ Future improvements and features planned for this project:
 
 ### Performance Improvements
 
-- [ ] Implement parallel downloading to improve performance
+- [ ] Implement parallel downloading to improve performance:
+      [X] Make sure that gecko driver is cached and then execute workers.
+      [X] Get all stations data.
+      [ ] Download CSV files.
 - [ ] Optimize JSON file read/write operations
