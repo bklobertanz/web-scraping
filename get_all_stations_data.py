@@ -1,11 +1,17 @@
 import os
 import re
 import json
+import concurrent.futures
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from urllib.parse import quote  # Adding URL encoding functionality
-from common.web_scraping import STATIONS_DIR, setup_driver, STATIONS_PATH
+from urllib.parse import quote
+from common.web_scraping import (
+    STATIONS_DIR,
+    setup_driver,
+    STATIONS_PATH,
+    get_cached_driver_path,
+)
 
 base_url = "https://sinca.mma.gob.cl/index.php/region/index/id/"
 
@@ -188,19 +194,77 @@ def getRegionStations(driver, regionUrl):
         raise
 
 
-try:
-    driver = setup_driver()
-    stations = {}
-    for region_code, region_url in mapaRegionUrls.items():
-        stations[region_code] = getRegionStations(driver, region_url)
+def ensure_driver_cached():
+    """Ensure GeckoDriver is downloaded and cached before parallel processing"""
+    print("Ensuring GeckoDriver is cached...")
+    driver = None
+    try:
+        driver = setup_driver()
+        cached_path = get_cached_driver_path()
+        if os.path.exists(cached_path):
+            print(f"GeckoDriver successfully cached at: {cached_path}")
+            return True
+    except Exception as e:
+        print(f"Error caching driver: {e}")
+        return False
+    finally:
+        if driver:
+            driver.quit()
 
-    os.makedirs(STATIONS_DIR, exist_ok=True)
-    # Save to JSON
-    with open(STATIONS_PATH, "w", encoding="utf-8") as f:
-        json.dump(stations, f, ensure_ascii=False, indent=4)
-    print(f"Data successfully saved to {STATIONS_PATH} ")
 
-except Exception as e:
-    print(f"An error occurred: {e}")
-finally:
-    driver.quit()
+def process_region(region_code, region_url):
+    """Process a single region with its own driver instance"""
+    driver = None
+    try:
+        driver = setup_driver()
+        result = getRegionStations(driver, region_url)
+        return region_code, result
+    except Exception as e:
+        print(f"Error processing region {region_code}: {e}")
+        return region_code, None
+    finally:
+        if driver:
+            driver.quit()
+
+
+def main():
+    try:
+        # First ensure driver is cached
+        if not ensure_driver_cached():
+            raise Exception("Failed to cache GeckoDriver")
+
+        stations = {}
+        # Maximum number of concurrent processes based on CPU cores
+        max_workers = min(len(mapaRegionUrls), os.cpu_count() or 1)
+
+        print(f"Processing {len(mapaRegionUrls)} regions with {max_workers} workers")
+
+        with concurrent.futures.ProcessPoolExecutor(
+            max_workers=max_workers
+        ) as executor:
+            # Create future tasks for each region
+            future_to_region = {
+                executor.submit(process_region, region_code, region_url): region_code
+                for region_code, region_url in mapaRegionUrls.items()
+            }
+
+            # Process completed tasks as they finish
+            for future in concurrent.futures.as_completed(future_to_region):
+                region_code = future_to_region[future]
+                result = future.result()[1]  # Get the second element of the tuple
+                if result:
+                    stations[region_code] = result
+                    print(f"Completed processing region: {region_code}")
+
+        # Save results to JSON
+        os.makedirs(STATIONS_DIR, exist_ok=True)
+        with open(STATIONS_PATH, "w", encoding="utf-8") as f:
+            json.dump(stations, f, ensure_ascii=False, indent=4)
+        print(f"Data successfully saved to {STATIONS_PATH}")
+
+    except Exception as e:
+        print(f"An error occurred in main: {e}")
+
+
+if __name__ == "__main__":
+    main()
