@@ -81,6 +81,7 @@ Future improvements and features planned for this project:
 ### Data Collection
 
 - [ ] Add support for meteorological parameters collection
+- [x] Handle Github Gecko API rate limiting -> Cache gecko driver.
 - [x] Add support for custom naming when downloading files
 - [ ] Add support for dynamically changing averaging periods
 - [x] In downloaded file name use contaminant name and not its code.

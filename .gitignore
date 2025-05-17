@@ -31,6 +31,9 @@ ENV/
 *.swo
 
 # Project specific
+.wdm/
+.webdriver_cache/
+.driver_cache/
 data/
 # Jupyter Notebook
 .ipynb_checkpoints
