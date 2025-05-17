@@ -1,16 +1,17 @@
-import sys
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.firefox.service import Service
-from selenium.webdriver.firefox.options import Options
-from webdriver_manager.firefox import GeckoDriverManager
 from time import sleep
 import json
 import os
-import glob
 import re
+
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from common.web_scraping import (
+    CSV_CONTAMINANTS_DIR,
+    STATIONS_PATH,
+    setup_driver,
+)
+
 
 mapaContaminanteCodigo = {
     "PM10": "PM10",
@@ -29,9 +30,6 @@ mapaContaminanteCodigo = {
 }
 
 periodosPromedio = {"diario": "diario", "trimestral": "trimestral", "anual": "anual"}
-# Create downloads directory if it doesn't exist
-download_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "downloads")
-os.makedirs(download_dir, exist_ok=True)
 
 
 def clean_filename(text):
@@ -48,8 +46,10 @@ def download_csv(
     driver, url, region_code, station_name, contaminant_code, contaminant_data, period
 ):
     """Download CSV file and rename it with station and contaminant information"""
+    download_dir = CSV_CONTAMINANTS_DIR
+
     # Get list of files before download
-    files_before = set(glob.glob(os.path.join(download_dir, "*")))
+    files_before = set(os.listdir(download_dir))
 
     # Perform the download
     driver.get(url)
@@ -58,13 +58,18 @@ def download_csv(
     driver.find_element(By.CSS_SELECTOR, csvFileSel).click()
 
     # Wait for new file to appear and rename it
-    max_wait = 30  # Maximum seconds to wait for download
+    max_wait = 5  # Maximum seconds to wait for download
     while max_wait > 0:
         sleep(1)
-        files_after = set(glob.glob(os.path.join(download_dir, "*")))
+        # Check for new files directly in the download directory
+        files_after = set(os.listdir(download_dir))
         new_files = files_after - files_before
+
         if new_files:
-            original_file_path = new_files.pop()
+            original_file = next(
+                iter(new_files)
+            )  # Get the first (and should be only) new file
+            original_file_path = os.path.join(download_dir, original_file)
 
             # Get dates from contaminant data
             from_date = contaminant_data.get("from_date", "unknown")
@@ -96,39 +101,17 @@ def download_csv(
     return None
 
 
-# Setup Firefox options
-options = Options()
-options.set_preference("browser.download.folderList", 2)  # Custom location
-options.set_preference("browser.download.dir", download_dir)
-options.set_preference("browser.download.useDownloadDir", True)
-options.set_preference(
-    "browser.download.manager.showWhenStarting", False
-)  # Hide download manager
-options.set_preference(
-    "browser.download.manager.focusWhenStarting", False
-)  # Don't focus download manager
-options.set_preference(
-    "browser.download.manager.closeWhenDone", True
-)  # Close download manager when done
-options.set_preference(
-    "browser.helperApps.neverAsk.saveToDisk",
-    "text/csv,application/csv,application/vnd.ms-excel",
-)
-
-# Setup Firefox driver with options
-service = Service(GeckoDriverManager().install())
-driver = webdriver.Firefox(service=service, options=options)
-
 try:
+    driver = setup_driver(CSV_CONTAMINANTS_DIR)
+
     # Check if file exists
-    json_path = "./stations/stations_data.json"
-    if not os.path.exists(json_path):
+    if not os.path.exists(STATIONS_PATH):
         raise FileNotFoundError(
-            f"The file {json_path} does not exist. Please get all stations data first."
+            f"The file {STATIONS_PATH} does not exist. Please get all stations data first."
         )
 
     # read json file
-    with open(json_path, "r", encoding="utf-8") as f:
+    with open(STATIONS_PATH, "r", encoding="utf-8") as f:
         try:
             stations_data = json.loads(f.read())
             if not isinstance(stations_data, dict):
@@ -140,6 +123,8 @@ try:
     # Download CSV files for each region, station, and contaminant
     # Manually set the period to "anual" for all downloads
     period = periodosPromedio["anual"]
+    # Create downloads directory if it doesn't exist
+    os.makedirs(CSV_CONTAMINANTS_DIR, exist_ok=True)
 
     for region_code, region_data in stations_data.items():
         if not isinstance(region_data, dict) or "stations" not in region_data:

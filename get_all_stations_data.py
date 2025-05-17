@@ -1,24 +1,19 @@
 import os
-from selenium import webdriver
+import re
+import json
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.firefox.service import Service
-from webdriver_manager.firefox import GeckoDriverManager
-import re
-from time import sleep
-from pprint import pprint
-import sys
-import json
 from urllib.parse import quote  # Adding URL encoding functionality
+from common.web_scraping import STATIONS_DIR, setup_driver, STATIONS_PATH
 
 base_url = "https://sinca.mma.gob.cl/index.php/region/index/id/"
 
 
-def getMacroURL(current_region_code, station_key, contaminant_code, periodosPromedio):
+def getMacroURL(current_region_code, station_key, contaminant_code, periodo_promedio):
     contaminantCodeUrlMap = {
         "discreto": f'&macro=./{current_region_code}/{station_key}/Cal/{contaminant_code}//{contaminant_code}.discreto.{periodosPromedio["anual"]}.ic',
-        "default": f'&macro=./{current_region_code}/{station_key}/Cal/{contaminant_code}//{contaminant_code}.diario.{periodosPromedio["anual"]}.ic',
+        "default": f"&macro=./{current_region_code}/{station_key}/Cal/{contaminant_code}//{contaminant_code}.diario.{periodo_promedio}.ic",
     }
 
     if contaminant_code == "PM1D" or contaminant_code == "PM2D":
@@ -52,12 +47,8 @@ regiones = [
 ]
 mapaRegionUrls = {f"R{region}": f"{base_url}{region}" for region in regiones}
 
-# Setup Firefox driver
-service = Service(GeckoDriverManager().install())
-driver = webdriver.Firefox(service=service)
 
-
-def getRegionStations(regionUrl):
+def getRegionStations(driver, regionUrl):
     stations_by_region = {}
     contaminants = {}
     if not regionUrl:
@@ -67,7 +58,6 @@ def getRegionStations(regionUrl):
     try:
         # Navigate to the page
         driver.get(regionUrl)
-
         # Wait for the caption element to be present
         caption = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "caption#tableRows"))
@@ -173,7 +163,7 @@ def getRegionStations(regionUrl):
                             current_region_code,
                             station_key,
                             contaminant_code,
-                            periodosPromedio,
+                            periodosPromedio["anual"],
                         )
                         contaminant_graph_url = (
                             f"https://sinca.mma.gob.cl/cgi-bin/APUB-MMA/apub.htmlindico2.cgi"
@@ -198,19 +188,17 @@ def getRegionStations(regionUrl):
         raise
 
 
-stations = {}
-for region_code, region_url in mapaRegionUrls.items():
-    stations[region_code] = getRegionStations(region_url)
-
 try:
+    driver = setup_driver()
+    stations = {}
+    for region_code, region_url in mapaRegionUrls.items():
+        stations[region_code] = getRegionStations(driver, region_url)
 
-    path = "./stations"
-    os.makedirs(path, exist_ok=True)
+    os.makedirs(STATIONS_DIR, exist_ok=True)
     # Save to JSON
-    with open(f"{path}/stations_data.json", "w", encoding="utf-8") as f:
+    with open(STATIONS_PATH, "w", encoding="utf-8") as f:
         json.dump(stations, f, ensure_ascii=False, indent=4)
-    print("Data successfully saved to stations_data.json")
-
+    print(f"Data successfully saved to {STATIONS_PATH} ")
 
 except Exception as e:
     print(f"An error occurred: {e}")
