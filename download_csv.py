@@ -48,10 +48,13 @@ def download_csv(
     driver, url, region_code, station_name, contaminant_code, contaminant_data, period
 ):
     """Download CSV file and rename it with station and contaminant information"""
-    download_dir = CSV_CONTAMINANTS_DIR
+    base_download_dir = CSV_CONTAMINANTS_DIR
+    process_id = os.getpid()
+    # Get the process-specific download directory
+    download_dir = os.path.join(base_download_dir, f"process_{process_id}")
 
     # Get list of files before download
-    files_before = set(os.listdir(download_dir))
+    files_before = set(os.listdir(download_dir))  # Changed from base_download_dir
 
     # Perform the download
     driver.get(url)
@@ -86,14 +89,12 @@ def download_csv(
     max_wait = 5  # Maximum seconds to wait for download
     while max_wait > 0:
         sleep(1)
-        # Check for new files directly in the download directory
-        files_after = set(os.listdir(download_dir))
+        # Check for new files in the process-specific directory
+        files_after = set(os.listdir(download_dir))  # Changed from base_download_dir
         new_files = files_after - files_before
 
         if new_files:
-            original_file = next(
-                iter(new_files)
-            )  # Get the first (and should be only) new file
+            original_file = next(iter(new_files))
             original_file_path = os.path.join(download_dir, original_file)
 
             # Get dates from contaminant data
@@ -104,12 +105,17 @@ def download_csv(
             clean_station = clean_filename(station_name)
             contaminant_name = mapaContaminanteCodigo.get(contaminant_code)
             new_filename = f"{region_code}_{clean_station}_{contaminant_name}_{from_date}_{to_date}_{period}.csv"
-            new_file_path = os.path.join(download_dir, new_filename)
+            # Place the final file in the base download directory
+            new_file_path = os.path.join(base_download_dir, new_filename)
 
             # Rename the file
             if os.path.exists(new_file_path):
-                os.remove(new_file_path)  # Remove existing file if it exists
+                os.remove(new_file_path)
             os.rename(original_file_path, new_file_path)
+
+            # Clean up process directory if empty
+            if not os.listdir(download_dir):
+                os.rmdir(download_dir)
 
             print(f"Downloaded and renamed:")
             print(f"Region: {region_code}")
@@ -120,6 +126,7 @@ def download_csv(
             print(f"Full path: {new_file_path}")
 
             return new_file_path
+
         max_wait -= 1
 
     print("No new file detected after download attempt")

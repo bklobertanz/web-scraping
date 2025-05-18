@@ -57,8 +57,13 @@ def setup_driver(download_dir=None):
 
     # Configure download behavior
     if download_dir:
-        download_dir = os.path.abspath(download_dir)
-        print(f"Setting download directory to: {download_dir}")
+        # Create a process-specific subdirectory
+        process_id = os.getpid()
+        process_download_dir = os.path.join(download_dir, f"process_{process_id}")
+        os.makedirs(process_download_dir, exist_ok=True)
+
+        download_dir = os.path.abspath(process_download_dir)
+        print(f"Setting process-specific download directory to: {download_dir}")
         options.set_preference("browser.download.dir", download_dir)
 
     options.set_preference("browser.download.manager.useWindow", False)
