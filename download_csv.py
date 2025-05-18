@@ -31,7 +31,14 @@ mapaContaminanteCodigo = {
     "THCM": "HCT",
 }
 
-periodosPromedio = {"diario": "diario", "trimestral": "trimestral", "anual": "anual"}
+periodosPromedioOpcion = {1: "diario", 2: "trimestral", 3: "anual"}
+
+
+def ask_for_period_option():
+    option = input(
+        "What option period do you want to download?\n1. Daily\n2. Quarterly\n3. Annual\n\n"
+    )
+    return option
 
 
 def clean_filename(text):
@@ -210,7 +217,8 @@ def main():
 
         # Create a list of all tasks to process
         tasks = []
-        period = periodosPromedio["anual"]
+        opcion = ask_for_period_option()
+        period = periodosPromedioOpcion[int(opcion)]
 
         for region_code, region_data in stations_data.items():
             if not isinstance(region_data, dict) or "stations" not in region_data:
