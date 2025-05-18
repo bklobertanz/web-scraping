@@ -83,13 +83,13 @@ Future improvements and features planned for this project:
 - [ ] Add support for meteorological parameters collection
 - [x] Handle Github Gecko API rate limiting -> Cache gecko driver.
 - [x] Add support for custom naming when downloading files
-- [ ] Add support for dynamically changing averaging periods
+- [x] Add support for dynamically changing averaging periods
 - [x] In downloaded file name use contaminant name and not its code.
 - [x] Check problems with contaminant link that includes CONAMA: PM2D, PM1D, NMHC, 0CH4, 0NOX, 0003 - PM1D and PM2D builds urls differently from other contaminants: ./RII/225/Cal/PM1D&macro=PM1D.discreto.diario -> improve waiting on blocking element and appearing csv download button (a tag).
 
 ### Performance Improvements
 
-- [ ] Implement parallel downloading to improve performance:
+- [x] Implement parallel downloading to improve performance:
       [X] Make sure that gecko driver is cached and then execute workers.
       [X] Get all stations data.
       [X] Download CSV files -> creation of a folder for each specific process.
