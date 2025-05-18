@@ -1,8 +1,9 @@
-from time import sleep
+from time import sleep, time
+from datetime import datetime
 import json
 import os
 import re
-
+import concurrent.futures
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -10,6 +11,7 @@ from common.web_scraping import (
     CSV_CONTAMINANTS_DIR,
     STATIONS_PATH,
     setup_driver,
+    get_cached_driver_path,
 )
 
 
@@ -124,54 +126,155 @@ def download_csv(
     return None
 
 
-try:
-    driver = setup_driver(CSV_CONTAMINANTS_DIR)
+def ensure_driver_cached():
+    """Ensure GeckoDriver is downloaded and cached before parallel processing"""
+    print("Ensuring GeckoDriver is cached...")
+    driver = None
+    try:
+        driver = setup_driver()
+        cached_path = get_cached_driver_path()
+        if os.path.exists(cached_path):
+            print(f"GeckoDriver successfully cached at: {cached_path}")
+            return True
+    except Exception as e:
+        print(f"Error caching driver: {e}")
+        return False
+    finally:
+        if driver:
+            driver.quit()
 
-    # Check if file exists
-    if not os.path.exists(STATIONS_PATH):
-        raise FileNotFoundError(
-            f"The file {STATIONS_PATH} does not exist. Please get all stations data first."
+
+def process_station_contaminant(
+    region_code, station_name, station_data, contaminant_code, contaminant_data, period
+):
+    """Process a single station-contaminant combination with its own driver instance"""
+    driver = None
+    try:
+        driver = setup_driver(CSV_CONTAMINANTS_DIR)
+        return download_csv(
+            driver,
+            contaminant_data.get("graph_url"),
+            region_code,
+            station_name,
+            contaminant_code,
+            contaminant_data,
+            period,
         )
+    except Exception as e:
+        print(
+            f"Error processing {region_code} - {station_name} - {contaminant_code}: {e}"
+        )
+        return None
+    finally:
+        if driver:
+            driver.quit()
 
-    # read json file
-    with open(STATIONS_PATH, "r", encoding="utf-8") as f:
-        try:
-            stations_data = json.loads(f.read())
-            if not isinstance(stations_data, dict):
-                raise TypeError("JSON data must be an object/dictionary at root level")
-        except json.JSONDecodeError as je:
-            print(f"Invalid JSON format: {je}")
-            raise
 
-    # Download CSV files for each region, station, and contaminant
-    # Manually set the period to "anual" for all downloads
-    period = periodosPromedio["anual"]
-    # Create downloads directory if it doesn't exist
-    os.makedirs(CSV_CONTAMINANTS_DIR, exist_ok=True)
+def main():
+    start_time = time()
+    start_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"Starting downloads at: {start_datetime}")
 
-    for region_code, region_data in stations_data.items():
-        if not isinstance(region_data, dict) or "stations" not in region_data:
-            continue
+    try:
+        # First ensure driver is cached
+        if not ensure_driver_cached():
+            raise Exception("Failed to cache GeckoDriver")
 
-        for station_name, station_data in region_data["stations"].items():
-            for contaminant_code, contaminant_data in station_data.get(
-                "contaminants", {}
-            ).items():
-                file_path = download_csv(
-                    driver,
-                    contaminant_data.get("graph_url"),
-                    region_code,
-                    station_name,
-                    contaminant_code,
-                    contaminant_data,
-                    period,
-                )
+        # Check if file exists
+        if not os.path.exists(STATIONS_PATH):
+            raise FileNotFoundError(
+                f"The file {STATIONS_PATH} does not exist. Please get all stations data first."
+            )
 
-except FileNotFoundError as e:
-    print(f"Error: {e}")
-except json.JSONDecodeError as e:
-    print(f"Error decoding JSON file: {e}")
-except Exception as e:
-    print(f"Unexpected error: {e}")
-finally:
-    driver.quit()
+        # read json file
+        with open(STATIONS_PATH, "r", encoding="utf-8") as f:
+            try:
+                stations_data = json.loads(f.read())
+                if not isinstance(stations_data, dict):
+                    raise TypeError(
+                        "JSON data must be an object/dictionary at root level"
+                    )
+            except json.JSONDecodeError as je:
+                print(f"Invalid JSON format: {je}")
+                raise
+
+        # Create downloads directory if it doesn't exist
+        os.makedirs(CSV_CONTAMINANTS_DIR, exist_ok=True)
+
+        # Create a list of all tasks to process
+        tasks = []
+        period = periodosPromedio["anual"]
+
+        for region_code, region_data in stations_data.items():
+            if not isinstance(region_data, dict) or "stations" not in region_data:
+                continue
+
+            for station_name, station_data in region_data["stations"].items():
+                for contaminant_code, contaminant_data in station_data.get(
+                    "contaminants", {}
+                ).items():
+                    tasks.append(
+                        (
+                            region_code,
+                            station_name,
+                            station_data,
+                            contaminant_code,
+                            contaminant_data,
+                            period,
+                        )
+                    )
+
+        print(f"Processing {len(tasks)} downloads...")
+
+        # Maximum number of concurrent processes based on CPU cores (divided by 2 for resource management)
+        max_workers = min(len(tasks), os.cpu_count() or 1) // 2
+        print(f"Using {max_workers} concurrent workers")
+
+        successful_downloads = 0
+        failed_downloads = 0
+
+        # Process tasks concurrently
+        with concurrent.futures.ProcessPoolExecutor(
+            max_workers=max_workers
+        ) as executor:
+            futures = []
+            for task in tasks:
+                futures.append(executor.submit(process_station_contaminant, *task))
+
+            # Process completed tasks as they finish
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    result = future.result()
+                    if result:
+                        successful_downloads += 1
+                        print(f"Successfully downloaded: {os.path.basename(result)}")
+                    else:
+                        failed_downloads += 1
+                except Exception as e:
+                    failed_downloads += 1
+                    print(f"Task failed: {e}")
+
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON file: {e}")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+
+    end_time = time()
+    end_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    elapsed_time = end_time - start_time
+
+    print("\nDownload Summary:")
+    print(f"Start time: {start_datetime}")
+    print(f"End time: {end_datetime}")
+    print(
+        f"Total elapsed time: {elapsed_time:.2f} seconds ({elapsed_time/60:.2f} minutes)"
+    )
+    print(f"Successful downloads: {successful_downloads}")
+    print(f"Failed downloads: {failed_downloads}")
+    print(f"Total downloads attempted: {successful_downloads + failed_downloads}")
+
+
+if __name__ == "__main__":
+    main()
