@@ -35,6 +35,7 @@ def get_cached_driver_path():
 def setup_driver(download_dir=None):
     """Setup and return a Firefox driver with proper options"""
     options = webdriver.FirefoxOptions()
+    options.add_argument("--headless")  # Enable headless mode
 
     # Create cache directory if it doesn't exist
     os.makedirs(DRIVER_CACHE_DIR, exist_ok=True)
