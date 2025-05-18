@@ -1,78 +1,89 @@
-# Air Quality Data Scraper for SINCA (Sistema de Información Nacional de Calidad del Aire)
+# Air Quality Data Scraper for SINCA
 
-This project contains scripts to collect and download air quality data from the Chilean National Air Quality Information System (SINCA).
+A Python-based tool for downloading air quality data from Chile's National Air Quality System (SINCA). The tool supports parallel processing for efficient data collection across multiple monitoring stations.
 
-## Scripts Description
+## Features
 
-### scraping-mapeo.py
+### Station Data Collection
 
-This script maps and collects metadata about air quality monitoring stations across different regions in Chile. It:
+- Multi-region coverage (XV to XII, including Metropolitan Region)
+- Parallel processing for faster data gathering
+- Automatic caching of web driver
+- Process-specific download management
+- Custom file naming conventions
 
-- Scrapes data from all regions (XV to XII, including Metropolitan Region)
-- Collects information about each station including:
-  - Station name
-  - Station ID
-  - Station key
-  - Available contaminants
-  - Time ranges for measurements
-- Generates URLs for accessing the data graphs
-- Saves all collected information in `stations/stations_data.json`
+### Data Types
 
-### download_csv.py
-
-This script downloads the actual measurement data in CSV format. It:
-
-- Uses the station information collected by scraping-mapeo.py
-- Downloads CSV files for each station and contaminant
-- Saves all files in the `downloads/` directory
+- Air quality measurements
+- Station metadata
+- Historical records
+- Multiple averaging periods (daily, quarterly, annual)
 
 ## Supported Contaminants
 
-The system tracks the following contaminants:
+| Code | Contaminant | Description               |
+| ---- | ----------- | ------------------------- |
+| PM10 | PM10        | Particulate Matter ≤10μm  |
+| PM25 | PM2.5       | Particulate Matter ≤2.5μm |
+| NO2  | NO2         | Nitrogen Dioxide          |
+| SO2  | SO2         | Sulfur Dioxide            |
+| O3   | O3          | Ozone                     |
+| CO   | CO          | Carbon Monoxide           |
+| NOX  | NOX         | Nitrogen Oxides           |
+| NO   | NO          | Nitric Oxide              |
+| CH4  | CH4         | Methane                   |
+| HCNM | HCNM        | Non-Methane Hydrocarbons  |
+| HCT  | HCT         | Total Hydrocarbons        |
 
-- PM10 (Particulate Matter ≤10μm)
-- PM2.5 (Particulate Matter ≤2.5μm)
-- NO2 (Nitrogen Dioxide)
-- SO2 (Sulfur Dioxide)
-- O3 (Ozone)
-- CO (Carbon Monoxide)
-- NOX (Nitrogen Oxides)
-- NO (Nitric Oxide)
-- CH4 (Methane)
-- HCNM (Non-Methane Hydrocarbons)
-- HCT (Total Hydrocarbons)
+## Setup
 
-## Data Averaging Periods
+### Requirements
 
-The data can be retrieved in different averaging periods:
+- Python 3.x
+- Firefox Browser
+- Internet connection
 
-- Daily averages
-- Quarterly averages
-- Annual averages
+### Installation
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### File Structure
+
+```
+project/
+├── data/
+│   ├── stations/
+│   │   └── stations_data.json
+│   └── contaminants/
+│       └── process_{pid}/
+├── common/
+│   └── web_scraping.py
+├── get_all_stations_data.py
+└── download_csv.py
+```
 
 ## Usage
 
-1. Install the required dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-2. First run the mapping script to collect station information:
-   ```
-   python scraping-mapeo.py
-   ```
-3. Then download the data using:
-   ```
-   python download_csv.py
-   ```
+1. Collect station information:
 
-## Requirements
+```bash
+python get_all_stations_data.py
+```
 
-- Python 3.x
-- Selenium WebDriver
-- Firefox Browser
-- Required Python packages are listed in requirements.txt
+2. Download contaminant data:
 
-Note: The script uses Firefox WebDriver. Make sure Firefox is installed on your system.
+```bash
+python download_csv.py
+```
+
+When prompted, select period:
+
+- 1: Daily
+- 2: Quarterly
+- 3: Annual
 
 ## TODO
 
