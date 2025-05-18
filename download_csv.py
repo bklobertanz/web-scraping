@@ -53,9 +53,32 @@ def download_csv(
 
     # Perform the download
     driver.get(url)
-    sleep(5)  # Wait for page to load completely
+
+    # Wait for any loading screen to disappear
+    try:
+        screen_overlay = WebDriverWait(driver, 10).until(
+            EC.invisibility_of_element_located((By.CLASS_NAME, "screen"))
+        )
+    except Exception as e:
+        print(f"Warning: Loading screen handling error: {e}")
+
+    # Wait for the download button and try different methods to click it
     csvFileSel = "body > table > tbody > tr > td > table:nth-child(3) > tbody > tr:nth-child(1) > td > label > span.icon-file-excel > a"
-    driver.find_element(By.CSS_SELECTOR, csvFileSel).click()
+    try:
+        download_button = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, csvFileSel))
+        )
+
+        # Try clicking with JavaScript if normal click doesn't work
+        try:
+            download_button.click()
+        except Exception as e:
+            print("Regular click failed, trying JavaScript click...")
+            driver.execute_script("arguments[0].click();", download_button)
+
+    except Exception as e:
+        print(f"Error clicking download button: {e}")
+        raise
 
     # Wait for new file to appear and rename it
     max_wait = 5  # Maximum seconds to wait for download
