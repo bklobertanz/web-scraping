@@ -70,6 +70,59 @@ def get_tipo_estacion(estacion, nombre_tipo):
         return False
 
 
+def extract_url_data(link):
+    """Extract all relevant data from a station URL using regex patterns.
+
+    Args:
+        link (str): The URL to parse
+
+    Returns:
+        dict: Dictionary containing extracted data (region_code, station_key, station_id,
+              contaminant_code, from_date, to_date)
+    """
+    # Define all regex patterns
+    REGION_CODE_PATTERN = r"/([IVXRM]+)/"
+    STATION_KEY_PATTERN = r"/[IVXRM]+/([^/]+)/Cal/"
+    STATION_ID_PATTERN = r"/id/(\d+)"
+    CONTAMINANT_PATTERN = r"macro=([^\.]+)\."
+    FROM_DATE_PATTERN = r"\&from=(\d{6})\&"
+    TO_DATE_PATTERN = r"\&to=(\d{6})\&"
+
+    # Initialize result dictionary
+    result = {
+        "region_code": None,
+        "station_key": None,
+        "station_id": None,
+        "contaminant_code": None,
+        "from_date": None,
+        "to_date": None,
+    }
+
+    # Extract data using regex patterns
+    region_match = re.search(REGION_CODE_PATTERN, link)
+    station_key_match = re.search(STATION_KEY_PATTERN, link)
+    station_id_match = re.search(STATION_ID_PATTERN, link)
+    contaminant_match = re.search(CONTAMINANT_PATTERN, link)
+    from_match = re.search(FROM_DATE_PATTERN, link)
+    to_match = re.search(TO_DATE_PATTERN, link)
+
+    # Update result dictionary with matched groups
+    if region_match:
+        result["region_code"] = region_match.group(1)
+    if station_key_match:
+        result["station_key"] = station_key_match.group(1)
+    if station_id_match:
+        result["station_id"] = station_id_match.group(1)
+    if contaminant_match:
+        result["contaminant_code"] = contaminant_match.group(1)
+    if from_match:
+        result["from_date"] = from_match.group(1)
+    if to_match:
+        result["to_date"] = to_match.group(1)
+
+    return result
+
+
 def getRegionStations(driver, regionUrl):
     stations_by_region = {}
     contaminants = {}
@@ -136,46 +189,27 @@ def getRegionStations(driver, regionUrl):
             link = links.get_attribute("href")
             print(f"\nAnalyzing link: {link}")
 
-            # Get station key
-            station_pattern = r"/([IVXRM]+)/([^/]+)/Cal/"
-            match = re.search(station_pattern, link)
-            if match:
-                current_region_code = match.group(1)
-                station_key = match.group(2)
+            # Extract all URL data using the new function
+            url_data = extract_url_data(link)
+
+            if url_data["region_code"] and url_data["station_key"]:
+                current_region_code = url_data["region_code"]
+                station_key = url_data["station_key"]
                 if station_key not in estaciones_keys:
                     estaciones_keys.append(station_key)
                 if station_key not in contaminants:
                     contaminants[station_key] = {}
 
-            # Get contaminant code and contaminant graph dates
-            contaminant_pattern = r"macro=([^\.]+)\."
-            from_pattern = r"\&from=(\d{6})\&"
-            to_pattern = r"\&to=(\d{6})\&"
-
-            contaminant_match = re.search(contaminant_pattern, link)
-            from_match = re.search(from_pattern, link)
-            to_match = re.search(to_pattern, link)
-
-            if contaminant_match and station_key:
-                contaminant_code = contaminant_match.group(1)
-                from_date = from_match.group(1) if from_match else None
-                to_date = to_match.group(1) if to_match else None
-
-                # Create nested structure for contaminant data
+            if url_data["contaminant_code"] and station_key:
+                contaminant_code = url_data["contaminant_code"]
                 if contaminant_code not in contaminants[station_key]:
                     contaminants[station_key][contaminant_code] = {
-                        "from_date": from_date,
-                        "to_date": to_date,
+                        "from_date": url_data["from_date"],
+                        "to_date": url_data["to_date"],
                     }
 
-            # Get station id
-            id_pattern = r"/id/(\d+)"
-            id_match = re.search(id_pattern, link)
-            if id_match:
-                station_id = id_match.group(1)
-                estaciones_ids.append(station_id)
-            else:
-                print("No match for station id pattern")
+            if url_data["station_id"]:
+                estaciones_ids.append(url_data["station_id"])
 
         if current_region_code:
             # Add numberStations to the dictionary
@@ -184,9 +218,7 @@ def getRegionStations(driver, regionUrl):
 
             # Add stations under the stations field
             for i, station_key in enumerate(estaciones_keys):
-                station_info = estaciones_info_basica[
-                    i
-                ]  # Get the station info dictionary
+                station_info = estaciones_info_basica[i]
                 stations_by_region["stations"][station_info["nombre"]] = {
                     "name": station_info["nombre"],
                     "en_linea": station_info["en_linea"],
@@ -202,7 +234,6 @@ def getRegionStations(driver, regionUrl):
                     for contaminant_code, dates in contaminants[station_key].items():
                         from_date = dates["from_date"]
                         to_date = dates["to_date"]
-                        # URL encode the station name
                         encoded_station_name = quote(station_info["nombre"])
                         macroURL = getMacroURL(
                             current_region_code,
