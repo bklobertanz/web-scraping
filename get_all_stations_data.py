@@ -104,7 +104,7 @@ def getRegionStations(driver, regionUrl):
         for estacion in estaciones:
             # Get the name of the station
             nombre = estacion.find_element(By.CSS_SELECTOR, "a")
-
+            ficha_url = nombre.get_attribute("href")
             # Get types of station by checking element existence
             try:
                 estacion.find_element(
@@ -135,6 +135,7 @@ def getRegionStations(driver, regionUrl):
             estaciones_info_basica.append(
                 {
                     "nombre": nombre.text.strip(),
+                    "ficha_url": ficha_url,
                     "en_linea": en_linea_value,
                     "estacion_meteorologica": estacion_meteorologica_value,
                     "estacion_publica": estacion_publica_value,
@@ -201,6 +202,7 @@ def getRegionStations(driver, regionUrl):
                     "en_linea": station_info["en_linea"],
                     "estacion_meteorologica": station_info["estacion_meteorologica"],
                     "estacion_publica": station_info["estacion_publica"],
+                    "ficha_url": station_info["ficha_url"],
                     "key": station_key,
                     "id": estaciones_ids[i],
                     "contaminants": contaminants[station_key],
