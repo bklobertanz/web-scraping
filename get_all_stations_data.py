@@ -18,7 +18,7 @@ base_url = "https://sinca.mma.gob.cl/index.php/region/index/id/"
 
 def getMacroURL(current_region_code, station_key, contaminant_code, periodo_promedio):
     contaminantCodeUrlMap = {
-        "discreto": f'&macro=./{current_region_code}/{station_key}/Cal/{contaminant_code}//{contaminant_code}.discreto.{periodosPromedio["anual"]}.ic',
+        "discreto": f"&macro=./{current_region_code}/{station_key}/Cal/{contaminant_code}//{contaminant_code}.discreto.{periodo_promedio}.ic",
         "default": f"&macro=./{current_region_code}/{station_key}/Cal/{contaminant_code}//{contaminant_code}.diario.{periodo_promedio}.ic",
     }
 
@@ -142,8 +142,8 @@ def getRegionStations(driver, regionUrl):
         caption_text = caption.text
         numberStations = caption_text.split(":")[1].strip()
 
-        selectorEstacion = "#tablaRegional > tbody > tr"
-        selectorGraficoEstaciones = "#tablaRegional > tbody > tr > td > a"
+        selector_estacion = "#tablaRegional > tbody > tr"
+        selector_tags_link_estaciones = "#tablaRegional > tbody > tr > td > a"
 
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -157,11 +157,11 @@ def getRegionStations(driver, regionUrl):
 
         # Wait for the table rows to be present
         estaciones = WebDriverWait(driver, 10).until(
-            EC.presence_of_all_elements_located((By.CSS_SELECTOR, selectorEstacion))
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR, selector_estacion))
         )
-        linksGraficos = WebDriverWait(driver, 10).until(
+        tags_link_estaciones = WebDriverWait(driver, 10).until(
             EC.presence_of_all_elements_located(
-                (By.CSS_SELECTOR, selectorGraficoEstaciones)
+                (By.CSS_SELECTOR, selector_tags_link_estaciones)
             )
         )
         # Get station basic data
@@ -185,12 +185,13 @@ def getRegionStations(driver, regionUrl):
                 }
             )
 
-        for links in linksGraficos:
-            link = links.get_attribute("href")
-            print(f"\nAnalyzing link: {link}")
+        urls_estaciones = [link.get_attribute("href") for link in tags_link_estaciones]
+
+        for url in urls_estaciones:
+            print(f"\nAnalyzing url: {url}")
 
             # Extract all URL data using the new function
-            url_data = extract_url_data(link)
+            url_data = extract_url_data(url)
 
             if url_data["region_code"] and url_data["station_key"]:
                 current_region_code = url_data["region_code"]
@@ -230,6 +231,7 @@ def getRegionStations(driver, regionUrl):
                     "contaminants": contaminants[station_key],
                 }
                 # Create graph URL for each contaminant
+
                 if station_key in contaminants:
                     for contaminant_code, dates in contaminants[station_key].items():
                         from_date = dates["from_date"]
