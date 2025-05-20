@@ -30,6 +30,11 @@ def getMacroURL(current_region_code, station_key, contaminant_code, periodo_prom
 
 
 # Check if there are more contaminants
+tiposEstacion = {
+    "estación pública": "estación pública",
+    "estación meteorológica": "estación meteorológica",
+    "en línea": "en línea",
+}
 
 periodosPromedio = {"diario": "diario", "trimestral": "trimestral", "anual": "anual"}
 
@@ -73,7 +78,7 @@ def getRegionStations(driver, regionUrl):
         caption_text = caption.text
         numberStations = caption_text.split(":")[1].strip()
 
-        selectorNombreEstaciones = "#tablaRegional > tbody > tr > th > a"
+        selectorEstacion = "#tablaRegional > tbody > tr"
         selectorGraficoEstaciones = "#tablaRegional > tbody > tr > td > a"
 
     except Exception as e:
@@ -81,24 +86,60 @@ def getRegionStations(driver, regionUrl):
 
     try:
         # Create empty lists to store station data
-        estaciones_list = []
+        estaciones_info_basica = []
         estaciones_ids = []
         estaciones_keys = []
         current_region_code = None
 
         # Wait for the table rows to be present
-        nombresEstaciones = WebDriverWait(driver, 10).until(
-            EC.presence_of_all_elements_located(
-                (By.CSS_SELECTOR, selectorNombreEstaciones)
-            )
+        estaciones = WebDriverWait(driver, 10).until(
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR, selectorEstacion))
         )
         linksGraficos = WebDriverWait(driver, 10).until(
             EC.presence_of_all_elements_located(
                 (By.CSS_SELECTOR, selectorGraficoEstaciones)
             )
         )
+        # Get station basic data
+        for estacion in estaciones:
+            # Get the name of the station
+            nombre = estacion.find_element(By.CSS_SELECTOR, "a")
 
-        estaciones_list = [nombre.text.strip() for nombre in nombresEstaciones]
+            # Get types of station by checking element existence
+            try:
+                estacion.find_element(
+                    By.CSS_SELECTOR, f"span[title='{tiposEstacion['en línea']}']"
+                )
+                en_linea_value = True
+            except:
+                en_linea_value = False
+
+            try:
+                estacion.find_element(
+                    By.CSS_SELECTOR,
+                    f"span[title='{tiposEstacion['estación meteorológica']}']",
+                )
+                estacion_meteorologica_value = True
+            except:
+                estacion_meteorologica_value = False
+
+            try:
+                estacion.find_element(
+                    By.CSS_SELECTOR,
+                    f"span[title='{tiposEstacion['estación pública']}']",
+                )
+                estacion_publica_value = True
+            except:
+                estacion_publica_value = False
+
+            estaciones_info_basica.append(
+                {
+                    "nombre": nombre.text.strip(),
+                    "en_linea": en_linea_value,
+                    "estacion_meteorologica": estacion_meteorologica_value,
+                    "estacion_publica": estacion_publica_value,
+                }
+            )
 
         for links in linksGraficos:
             link = links.get_attribute("href")
@@ -147,13 +188,19 @@ def getRegionStations(driver, regionUrl):
 
         if current_region_code:
             # Add numberStations to the dictionary
-            stations_by_region["numberStations"] = numberStations
+            stations_by_region["number_stations"] = numberStations
             stations_by_region["stations"] = {}
 
             # Add stations under the stations field
             for i, station_key in enumerate(estaciones_keys):
-                stations_by_region["stations"][estaciones_list[i]] = {
-                    "name": estaciones_list[i],
+                station_info = estaciones_info_basica[
+                    i
+                ]  # Get the station info dictionary
+                stations_by_region["stations"][station_info["nombre"]] = {
+                    "name": station_info["nombre"],
+                    "en_linea": station_info["en_linea"],
+                    "estacion_meteorologica": station_info["estacion_meteorologica"],
+                    "estacion_publica": station_info["estacion_publica"],
                     "key": station_key,
                     "id": estaciones_ids[i],
                     "contaminants": contaminants[station_key],
@@ -164,7 +211,7 @@ def getRegionStations(driver, regionUrl):
                         from_date = dates["from_date"]
                         to_date = dates["to_date"]
                         # URL encode the station name
-                        encoded_station_name = quote(estaciones_list[i])
+                        encoded_station_name = quote(station_info["nombre"])
                         macroURL = getMacroURL(
                             current_region_code,
                             station_key,
