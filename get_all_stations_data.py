@@ -59,6 +59,17 @@ regiones = [
 mapaRegionUrls = {f"R{region}": f"{base_url}{region}" for region in regiones}
 
 
+def get_tipo_estacion(estacion, nombre_tipo):
+
+    try:
+        estacion.find_element(
+            By.CSS_SELECTOR, f"span[title='{tiposEstacion[nombre_tipo]}']"
+        )
+        return True
+    except:
+        return False
+
+
 def getRegionStations(driver, regionUrl):
     stations_by_region = {}
     contaminants = {}
@@ -105,40 +116,19 @@ def getRegionStations(driver, regionUrl):
             # Get the name of the station
             nombre = estacion.find_element(By.CSS_SELECTOR, "a")
             ficha_url = nombre.get_attribute("href")
+
             # Get types of station by checking element existence
-            try:
-                estacion.find_element(
-                    By.CSS_SELECTOR, f"span[title='{tiposEstacion['en línea']}']"
-                )
-                en_linea_value = True
-            except:
-                en_linea_value = False
-
-            try:
-                estacion.find_element(
-                    By.CSS_SELECTOR,
-                    f"span[title='{tiposEstacion['estación meteorológica']}']",
-                )
-                estacion_meteorologica_value = True
-            except:
-                estacion_meteorologica_value = False
-
-            try:
-                estacion.find_element(
-                    By.CSS_SELECTOR,
-                    f"span[title='{tiposEstacion['estación pública']}']",
-                )
-                estacion_publica_value = True
-            except:
-                estacion_publica_value = False
-
             estaciones_info_basica.append(
                 {
                     "nombre": nombre.text.strip(),
                     "ficha_url": ficha_url,
-                    "en_linea": en_linea_value,
-                    "estacion_meteorologica": estacion_meteorologica_value,
-                    "estacion_publica": estacion_publica_value,
+                    "en_linea": get_tipo_estacion(estacion, tiposEstacion["en línea"]),
+                    "estacion_meteorologica": get_tipo_estacion(
+                        estacion, tiposEstacion["estación meteorológica"]
+                    ),
+                    "estacion_publica": get_tipo_estacion(
+                        estacion, tiposEstacion["estación pública"]
+                    ),
                 }
             )
 
